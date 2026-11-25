@@ -13,6 +13,7 @@
 #include <game/client/components/camera.h>
 #include <game/client/gameclient.h>
 #include <game/collision.h>
+#include <game/gamecore.h>
 #include <game/mapitems.h>
 
 #include <algorithm>
@@ -65,12 +66,19 @@ void CKogHelper::Predict(int Direction, int Jump, int Fire, int Horizon, SPrevie
 		return;
 
 	CCharacterCore Core = GameClient()->m_PredictedChar;
-	Core.SetCoreWorld(&GameClient()->m_PredictedWorld.m_Core, GameClient()->Collision(), nullptr);
+	Core.SetCoreWorld(&GameClient()->m_PredictedWorld.m_Core, GameClient()->Collision(), GameClient()->m_PredictedWorld.Teams());
 	Core.m_Input = GameClient()->m_PredictedChar.m_Input;
 	Core.m_Input.m_Direction = Direction;
 	Core.m_Input.m_Jump = Jump != 0 ? 1 : 0;
 	Core.m_Input.m_Fire = Fire != 0 ? 1 : 0;
 	Core.m_Direction = Direction;
+
+	// This is only a movement preview. Never simulate the player's hook here:
+	// stale hook targets/team data used to crash the client while hooking.
+	Core.m_Input.m_Hook = 0;
+	Core.m_HookState = HOOK_IDLE;
+	Core.m_HookTick = 0;
+	Core.m_HookPos = Core.m_Pos;
 
 	const int Ticks = ClampInt(Horizon, 1, MAX_PREVIEW_TICKS);
 	for(int Tick = 0; Tick < Ticks; ++Tick)
