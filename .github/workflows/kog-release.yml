@@ -19,7 +19,7 @@ jobs:
         include:
           - name: windows-x64
             os: windows-latest
-            cmake-args: -A x64 -DTOOLS=OFF -DSERVER=OFF -DDOWNLOAD_GTEST=OFF -DGTEST_FOUND=OFF -DVULKAN=OFF
+            cmake-args: -A x64 -DPREFER_BUNDLED_LIBS=ON -DDISCORD=OFF -DTOOLS=OFF -DSERVER=OFF -DDOWNLOAD_GTEST=OFF -DGTEST_FOUND=OFF -DVULKAN=OFF
             package-file: '*-win64.zip'
             asset-name: BestClient-KOG-win64.zip
           - name: linux-x64
@@ -39,9 +39,10 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y cmake ninja-build pkg-config \
-            libfreetype6-dev libglew-dev libnotify-dev libpng-dev \
+            libcurl4-openssl-dev libfreetype6-dev libglew-dev libnotify-dev \
+            libogg-dev libopus-dev libopusfile-dev libpng-dev \
             libsdl2-dev libsqlite3-dev libavcodec-dev libavformat-dev \
-            libavutil-dev libswresample-dev libswscale-dev libx264-dev
+            libavutil-dev libswresample-dev libswscale-dev libwavpack-dev libx264-dev
 
       - name: Build release
         shell: bash

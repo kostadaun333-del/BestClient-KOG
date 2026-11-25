@@ -3318,7 +3318,7 @@ void CMenus::RenderSettingsBestClientGameplay(CUIRect MainView)
 			}
 		}
 
-		KogBlock.HSplitTop(MarginSmall, nullptr, &LeftColumn);
+		LeftColumn.HSplitTop(MarginSmall, nullptr, &LeftColumn);
 	}
 
 	const int InputsMode = g_Config.m_BcInputs;
