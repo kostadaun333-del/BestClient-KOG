@@ -18,6 +18,9 @@ public:
 	// Only corrects movement; aim and hook are never touched.
 	void ApplyAvoid(int *pDirection, int *pJump, int *pFire);
 
+	// True only when input correction is explicitly allowed for the current server.
+	bool IsInputAllowed() const;
+
 private:
 	static constexpr int MAX_PREVIEW_TICKS = 48;
 
@@ -29,7 +32,8 @@ private:
 
 	void Predict(int Direction, int Jump, int Fire, int Horizon, SPreviewPoint *pOut, int *pOutLen, int *pOutFreezeTick) const;
 	bool CanIntervene() const;
-	void LogIntervention(int FromDirection, int ToDirection, int Jump, int Fire, int FreezeTick);
+	void LogIntervention(int FromDirection, int ToDirection, int Jump, int Fire, int DesiredFreezeTick, int BestFreezeTick);
+	void LogMarkerOnly(int FreezeTick);
 
 	int m_TickCounter = 0;
 	int m_OverrideDirection = 0;
@@ -38,6 +42,7 @@ private:
 	int m_OverrideTicks = 0;
 	int m_CooldownTicks = 0;
 	int64_t m_LastLogTime = 0;
+	int64_t m_LastMarkerWarnTime = 0;
 
 	std::array<SPreviewPoint, MAX_PREVIEW_TICKS> m_aPreview = {};
 	int m_PreviewLen = 0;

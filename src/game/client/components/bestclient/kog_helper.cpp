@@ -39,6 +39,7 @@ void CKogHelper::OnReset()
 	m_OverrideFire = 0;
 	m_OverrideTicks = 0;
 	m_CooldownTicks = 0;
+	m_LastMarkerWarnTime = 0;
 	m_PreviewLen = 0;
 	m_PreviewFreezeTick = -1;
 }
@@ -56,6 +57,11 @@ bool CKogHelper::CanIntervene() const
 	// Explicit opt-in: input correction is only allowed on the address the user
 	// entered themselves (normally a local private server for anti-cheat tests).
 	return strstr(pAddress, pExpected) != nullptr;
+}
+
+bool CKogHelper::IsInputAllowed() const
+{
+	return CanIntervene();
 }
 
 void CKogHelper::Predict(int Direction, int Jump, int Fire, int Horizon, SPreviewPoint *pOut, int *pOutLen, int *pOutFreezeTick) const
@@ -104,15 +110,25 @@ void CKogHelper::Predict(int Direction, int Jump, int Fire, int Horizon, SPrevie
 	}
 }
 
-void CKogHelper::LogIntervention(int FromDirection, int ToDirection, int Jump, int Fire, int FreezeTick)
+void CKogHelper::LogIntervention(int FromDirection, int ToDirection, int Jump, int Fire, int DesiredFreezeTick, int BestFreezeTick)
 {
 	// Every correction is visible in the console: no silent input rewriting.
 	if(time_get() - m_LastLogTime < time_freq() / 2)
 		return;
 	m_LastLogTime = time_get();
 
-	dbg_msg("kog-avoid", "trusted_server=%s preset=%d tick=%d direction=%d->%d jump=%d hammer=%d predicted_freeze_tick=%d",
-		g_Config.m_BcKogServer, g_Config.m_BcKogPreset, m_TickCounter, FromDirection, ToDirection, Jump, Fire, FreezeTick);
+	dbg_msg("kog-avoid", "trusted_server=%s preset=%d tick=%d direction=%d->%d jump=%d hammer=%d freeze_tick=%d->%d",
+		g_Config.m_BcKogServer, g_Config.m_BcKogPreset, m_TickCounter, FromDirection, ToDirection, Jump, Fire, DesiredFreezeTick, BestFreezeTick);
+}
+
+void CKogHelper::LogMarkerOnly(int FreezeTick)
+{
+	if(time_get() - m_LastMarkerWarnTime < time_freq())
+		return;
+	m_LastMarkerWarnTime = time_get();
+
+	dbg_msg("kog-avoid", "marker_only=1 freeze_tick=%d reason=%s", FreezeTick,
+		g_Config.m_BcKogInput ? "server_not_trusted" : "input_correction_disabled");
 }
 
 void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)
@@ -162,6 +178,12 @@ void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)
 			int DesiredFreezeTick = -1;
 			int BestIndex = -1;
 
+			// Later freeze is better; no freeze at all is best. A path that
+			// delays freeze by even one tick counts as an improvement in Rage.
+			const auto FreezeQuality = [Horizon](int FreezeTick) {
+				return FreezeTick < 0 ? Horizon + 8 : FreezeTick;
+			};
+
 			const int aDirections[] = {-1, 0, 1};
 			for(int Direction : aDirections)
 			{
@@ -173,17 +195,12 @@ void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)
 						int PathLen = 0;
 						Predict(Direction, Jump, Fire, Horizon, m_aPreview.data(), &PathLen, &FreezeTick);
 
-						float Score = 0.0f;
-						if(FreezeTick >= 0)
-							Score -= static_cast<float>(Horizon - FreezeTick) * 50.0f;
-						else
-							Score += 10.0f;
-
-						Score -= static_cast<float>(std::abs(Direction - DesiredDirection)) * (Preset == 2 ? 0.8f : 3.0f);
-						Score -= Jump * 1.5f;
-						Score -= Fire * 0.5f;
+						float Score = static_cast<float>(FreezeQuality(FreezeTick)) * 12.0f;
+						Score -= static_cast<float>(std::abs(Direction - DesiredDirection)) * (Preset == 2 ? 1.0f : 4.0f);
+						Score -= Jump * (Preset == 2 ? 1.0f : 3.0f);
+						Score -= Fire * (Preset == 2 ? 0.5f : 2.0f);
 						if(Direction != 0 && GameClient()->m_PredictedChar.m_Vel.x * Direction < 0.0f)
-							Score -= 1.0f;
+							Score -= 2.0f;
 
 						aCandidates[NumCandidates] = {Direction, Jump, Fire, FreezeTick, Score};
 						if(Direction == DesiredDirection && Jump == DesiredJump && Fire == DesiredFire)
@@ -198,12 +215,15 @@ void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)
 				}
 			}
 
-			int Threshold = ClampInt(g_Config.m_BcKogSafety, 0, 10);
-			if(Preset == 1)
-				Threshold = std::max(Threshold, 3);
-
+			const int Threshold = ClampInt(g_Config.m_BcKogSafety, 0, 10);
+			const int MinGain = Preset == 2 ? 1 : (Preset == 1 ? 4 : 2);
 			const SCandidate &Best = aCandidates[BestIndex];
-			if(DesiredFreezeTick >= 0 && Best.m_FreezeTick < 0 && Best.m_Score > DesiredScore + Threshold && m_CooldownTicks == 0)
+			const int DesiredQuality = FreezeQuality(DesiredFreezeTick);
+			const int BestQuality = FreezeQuality(Best.m_FreezeTick);
+			const bool BestIsSafer = BestQuality >= DesiredQuality + MinGain;
+			const bool WorthIt = Best.m_Score > DesiredScore + (Preset == 2 ? 0 : Threshold);
+
+			if(DesiredFreezeTick >= 0 && BestIsSafer && WorthIt && m_CooldownTicks == 0)
 			{
 				AppliedDirection = Best.m_Direction;
 				AppliedJump = Best.m_Jump;
@@ -212,10 +232,10 @@ void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)
 				m_OverrideDirection = AppliedDirection;
 				m_OverrideJump = AppliedJump;
 				m_OverrideFire = AppliedFire;
-				m_OverrideTicks = Preset == 1 ? 3 : (Preset == 2 ? 12 : 4);
-				m_CooldownTicks = Preset == 2 ? 0 : std::max(Preset == 1 ? 4 : 0, ClampInt(g_Config.m_BcKogCooldown, 0, 20));
+				m_OverrideTicks = Preset == 1 ? 4 : (Preset == 2 ? 14 : 6);
+				m_CooldownTicks = Preset == 2 ? 0 : std::max(Preset == 1 ? 4 : 1, ClampInt(g_Config.m_BcKogCooldown, 0, 20));
 
-				LogIntervention(DesiredDirection, AppliedDirection, AppliedJump, AppliedFire, DesiredFreezeTick);
+				LogIntervention(DesiredDirection, AppliedDirection, AppliedJump, AppliedFire, DesiredFreezeTick, Best.m_FreezeTick);
 			}
 		}
 	}
@@ -230,6 +250,8 @@ void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)
 
 	m_PreviewDirection = AppliedDirection;
 	Predict(AppliedDirection, AppliedJump, AppliedFire, Horizon, m_aPreview.data(), &m_PreviewLen, &m_PreviewFreezeTick);
+	if(m_PreviewFreezeTick >= 0 && !CanIntervene())
+		LogMarkerOnly(m_PreviewFreezeTick);
 }
 
 void CKogHelper::OnRender()
