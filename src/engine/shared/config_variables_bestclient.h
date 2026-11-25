@@ -632,8 +632,8 @@ MACRO_CONFIG_INT(BcProfiler, bc_profiler, 0, 0, 1, CFGFLAG_CLIENT, "Show the Bes
 // KOG helper: trajectory preview + opt-in movement correction on a trusted (private) server
 MACRO_CONFIG_INT(BcKogPreset, bc_kog_preset, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "KOG avoid preset: 0 = Basic, 1 = Legit, 2 = Rage")
 MACRO_CONFIG_INT(BcKogMarker, bc_kog_marker, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the predicted trajectory with the freeze segment marked red")
-MACRO_CONFIG_INT(BcKogInput, bc_kog_input, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Allow movement correction (requires an explicitly configured trusted server)")
-MACRO_CONFIG_STR(BcKogServer, bc_kog_server, 96, "", CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Address substring of your own private server where correction is allowed")
+MACRO_CONFIG_INT(BcKogInput, bc_kog_input, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Allow movement correction on any server (explicit opt-in)")
+MACRO_CONFIG_STR(BcKogServer, bc_kog_server, 96, "", CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Deprecated: server address check is disabled; bc_kog_input is the only opt-in")
 MACRO_CONFIG_INT(BcKogHorizon, bc_kog_horizon, 28, 10, 48, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many ticks of physics to predict ahead")
 MACRO_CONFIG_INT(BcKogSafety, bc_kog_safety, 2, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minimum improvement before correcting movement (higher = more legit)")
 MACRO_CONFIG_INT(BcKogCooldown, bc_kog_cooldown, 2, 0, 20, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ticks between corrections in Basic/Legit modes")

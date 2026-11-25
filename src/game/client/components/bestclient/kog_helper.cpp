@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
-#include <cstring>
 
 namespace
 {
@@ -46,17 +45,9 @@ void CKogHelper::OnReset()
 
 bool CKogHelper::CanIntervene() const
 {
-	if(g_Config.m_BcKogInput == 0 || Client()->State() != IClient::STATE_ONLINE)
-		return false;
-
-	const char *pExpected = g_Config.m_BcKogServer;
-	const char *pAddress = Client()->ConnectAddressString();
-	if(pExpected == nullptr || pExpected[0] == '\0' || pAddress == nullptr)
-		return false;
-
-	// Explicit opt-in: input correction is only allowed on the address the user
-	// entered themselves (normally a local private server for anti-cheat tests).
-	return strstr(pAddress, pExpected) != nullptr;
+	// The user opted in explicitly with bc_kog_input. Server-side trust checks
+	// are intentionally gone: correction follows the player wherever they play.
+	return g_Config.m_BcKogInput != 0 && Client()->State() == IClient::STATE_ONLINE;
 }
 
 bool CKogHelper::IsInputAllowed() const
@@ -117,8 +108,8 @@ void CKogHelper::LogIntervention(int FromDirection, int ToDirection, int Jump, i
 		return;
 	m_LastLogTime = time_get();
 
-	dbg_msg("kog-avoid", "trusted_server=%s preset=%d tick=%d direction=%d->%d jump=%d hammer=%d freeze_tick=%d->%d",
-		g_Config.m_BcKogServer, g_Config.m_BcKogPreset, m_TickCounter, FromDirection, ToDirection, Jump, Fire, DesiredFreezeTick, BestFreezeTick);
+	dbg_msg("kog-avoid", "server_check=off preset=%d tick=%d direction=%d->%d jump=%d hammer=%d freeze_tick=%d->%d",
+		g_Config.m_BcKogPreset, m_TickCounter, FromDirection, ToDirection, Jump, Fire, DesiredFreezeTick, BestFreezeTick);
 }
 
 void CKogHelper::LogMarkerOnly(int FreezeTick)
@@ -127,8 +118,7 @@ void CKogHelper::LogMarkerOnly(int FreezeTick)
 		return;
 	m_LastMarkerWarnTime = time_get();
 
-	dbg_msg("kog-avoid", "marker_only=1 freeze_tick=%d reason=%s", FreezeTick,
-		g_Config.m_BcKogInput ? "server_not_trusted" : "input_correction_disabled");
+	dbg_msg("kog-avoid", "marker_only=1 freeze_tick=%d reason=input_correction_disabled", FreezeTick);
 }
 
 void CKogHelper::ApplyAvoid(int *pDirection, int *pJump, int *pFire)

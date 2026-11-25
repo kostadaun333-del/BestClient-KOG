@@ -3193,7 +3193,7 @@ void CMenus::RenderSettingsBestClientGameplay(CUIRect MainView)
 
 	// KOG helper block: visual preview is always available, input correction is opt-in.
 	{
-		const float KogBlockHeight = LineSize + MarginSmall + 7.0f * (MarginSmall + LineSize);
+		const float KogBlockHeight = LineSize + MarginSmall + 6.0f * (MarginSmall + LineSize);
 		CUIRect KogBlock;
 		LeftColumn.HSplitTop(KogBlockHeight, &KogBlock, &LeftColumn);
 
@@ -3267,30 +3267,8 @@ void CMenus::RenderSettingsBestClientGameplay(CUIRect MainView)
 			Content.VSplitMid(&MarkerButton, &InputButton, MarginSmall);
 			if(DoButton_CheckBox(&s_KogMarker, BcLocalize("Маркер фриза"), g_Config.m_BcKogMarker, &MarkerButton))
 				g_Config.m_BcKogMarker = !g_Config.m_BcKogMarker;
-			if(DoButton_CheckBox(&s_KogInput, BcLocalize("Коррекция на своём сервере"), g_Config.m_BcKogInput, &InputButton))
+			if(DoButton_CheckBox(&s_KogInput, BcLocalize("Коррекция движения"), g_Config.m_BcKogInput, &InputButton))
 				g_Config.m_BcKogInput = !g_Config.m_BcKogInput;
-		}
-
-		KogBlock.HSplitTop(MarginSmall, nullptr, &KogBlock);
-		KogBlock.HSplitTop(LineSize, &Button, &KogBlock);
-		{
-			static CLineInput s_KogServerInput;
-			static CButtonContainer s_KogUseCurrentServer;
-			s_KogServerInput.SetBuffer(g_Config.m_BcKogServer, sizeof(g_Config.m_BcKogServer));
-			CUIRect ServerLabel, ServerField, UseCurrentButton;
-			Button.VSplitLeft(110.0f, &ServerLabel, &Button);
-			Button.VSplitLeft(MarginSmall, nullptr, &Button);
-			Button.VSplitRight(90.0f, &ServerField, &UseCurrentButton);
-			Button.VSplitRight(MarginSmall, &ServerField, nullptr);
-			Ui()->DoLabel(&ServerLabel, BcLocalize("Свой сервер"), 14.0f, TEXTALIGN_ML);
-			Ui()->DoEditBox(&s_KogServerInput, &ServerField, EditBoxFontSize);
-			if(DoButton_Menu(&s_KogUseCurrentServer, BcLocalize("Текущий"), false, &UseCurrentButton, BUTTONFLAG_LEFT))
-			{
-				const char *pAddress = Client()->ConnectAddressString();
-				if(pAddress && pAddress[0] != '\0')
-					str_copy(g_Config.m_BcKogServer, pAddress, sizeof(g_Config.m_BcKogServer));
-			}
-			GameClient()->m_Tooltips.DoToolTip(&s_KogUseCurrentServer, &UseCurrentButton, BcLocalize("Подставить адрес текущего сервера"));
 		}
 
 		KogBlock.HSplitTop(MarginSmall, nullptr, &KogBlock);
@@ -3332,7 +3310,7 @@ void CMenus::RenderSettingsBestClientGameplay(CUIRect MainView)
 		{
 			const bool KogInputAllowed = GameClient()->m_KogHelper.IsInputAllowed();
 			TextRender()->TextColor(KogInputAllowed ? ColorRGBA(0.35f, 1.0f, 0.55f, 1.0f) : ColorRGBA(1.0f, 0.55f, 0.25f, 1.0f));
-			Ui()->DoLabel(&Content, KogInputAllowed ? BcLocalize("Авоид активен на этом сервере") : BcLocalize("Только маркер: включи коррекцию и укажи свой сервер"), 13.0f, TEXTALIGN_ML);
+			Ui()->DoLabel(&Content, KogInputAllowed ? BcLocalize("Авоид активен") : BcLocalize("Только маркер: включи коррекцию движения"), 13.0f, TEXTALIGN_ML);
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		}
 
