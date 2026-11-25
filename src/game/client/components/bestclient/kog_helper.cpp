@@ -2,8 +2,9 @@
 #include "kog_helper.h"
 
 #include <base/color.h>
+#include <base/dbg.h>
 #include <base/math.h>
-#include <base/system.h>
+#include <base/time.h>
 
 #include <engine/client.h>
 #include <engine/graphics.h>
