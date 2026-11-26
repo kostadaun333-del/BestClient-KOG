@@ -72,10 +72,16 @@ void CKogHelper::Predict(int Direction, int Jump, int Fire, int Horizon, SPrevie
 
 	// This is only a movement preview. Never simulate the player's hook here:
 	// stale hook targets/team data used to crash the client while hooking.
+	// Drop the copied hook target through the public setter so attached-player
+	// bookkeeping stays consistent, and clear every remaining hook field.
+	Core.SetHookedPlayer(-1);
+	Core.m_AttachedPlayers.clear();
 	Core.m_Input.m_Hook = 0;
 	Core.m_HookState = HOOK_IDLE;
 	Core.m_HookTick = 0;
 	Core.m_HookPos = Core.m_Pos;
+	Core.m_HookDir = vec2(0.0f, 0.0f);
+	Core.m_HookTeleBase = vec2(0.0f, 0.0f);
 
 	const int Ticks = ClampInt(Horizon, 1, MAX_PREVIEW_TICKS);
 	for(int Tick = 0; Tick < Ticks; ++Tick)
