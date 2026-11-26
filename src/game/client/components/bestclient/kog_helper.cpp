@@ -22,8 +22,6 @@
 
 namespace
 {
-constexpr float TILE_SIZE = 32.0f;
-
 int ClampInt(int Value, int Min, int Max)
 {
 	return std::min(Max, std::max(Min, Value));
@@ -88,12 +86,37 @@ void CKogHelper::Predict(int Direction, int Jump, int Fire, int Horizon, SPrevie
 	{
 		Core.Tick(true, false);
 
-		const int TileX = round_to_int(Core.m_Pos.x / TILE_SIZE);
-		const int TileY = round_to_int(Core.m_Pos.y / TILE_SIZE);
-		const int Tile = GameClient()->Collision()->GetTile(TileX, TileY);
-		const int FrontTile = GameClient()->Collision()->GetFrontTile(TileX, TileY);
-		const bool Freeze = Tile == TILE_FREEZE || FrontTile == TILE_FREEZE;
-		const bool Unfreeze = Tile == TILE_UNFREEZE || FrontTile == TILE_UNFREEZE;
+		// Match the client's own freeze detection: regular, front and switch
+		// layers, all freeze variants (including D/L freeze) and death tiles.
+		CCollision *pCollision = GameClient()->Collision();
+		const int Index = pCollision->GetPureMapIndex(Core.m_Pos);
+		const int aTiles[] = {
+			pCollision->GetTileIndex(Index),
+			pCollision->GetFrontTileIndex(Index),
+			pCollision->GetSwitchType(Index)};
+
+		bool Freeze = false;
+		bool Unfreeze = false;
+		for(int Tile : aTiles)
+		{
+			if(Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE || Tile == TILE_DEATH)
+				Freeze = true;
+			if(Tile == TILE_UNFREEZE)
+				Unfreeze = true;
+		}
+
+		const float R = CCharacterCore::PhysicalSize() / 3.0f;
+		if(pCollision->GetCollisionAt(Core.m_Pos.x + R, Core.m_Pos.y - R) == TILE_DEATH ||
+			pCollision->GetCollisionAt(Core.m_Pos.x + R, Core.m_Pos.y + R) == TILE_DEATH ||
+			pCollision->GetCollisionAt(Core.m_Pos.x - R, Core.m_Pos.y - R) == TILE_DEATH ||
+			pCollision->GetCollisionAt(Core.m_Pos.x - R, Core.m_Pos.y + R) == TILE_DEATH ||
+			pCollision->GetFrontCollisionAt(Core.m_Pos.x + R, Core.m_Pos.y - R) == TILE_DEATH ||
+			pCollision->GetFrontCollisionAt(Core.m_Pos.x + R, Core.m_Pos.y + R) == TILE_DEATH ||
+			pCollision->GetFrontCollisionAt(Core.m_Pos.x - R, Core.m_Pos.y - R) == TILE_DEATH ||
+			pCollision->GetFrontCollisionAt(Core.m_Pos.x - R, Core.m_Pos.y + R) == TILE_DEATH)
+		{
+			Freeze = true;
+		}
 
 		pOut[Tick].m_Pos = Core.m_Pos;
 		pOut[Tick].m_Freeze = Freeze && !Unfreeze;
